@@ -1,4 +1,4 @@
-# Domoticz-Disc-usage-Plugin
+# Disc usage
 Domoticz offers 'Motherboard sensors' which gives some data about CPU Usage, Memory Usage, etc. Also the usage of '/' and '/boot' are given. Because I also wanted to monitor the usage of the discs from my NAS, I wrote this plugin.
 ## Warning
 This is still beta!!!

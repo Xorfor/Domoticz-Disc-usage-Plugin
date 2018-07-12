@@ -108,7 +108,7 @@ class BasePlugin:
                     freespace = int(data[1])
                     size = int(data[2])
                     if size > 0:
-                        usage = (size-freespace)*100/size
+                        usage = round((size-freespace)*100/size, 2)
                         UpdateDevice(_UNIT_USAGE, int(usage), str(usage), _ACTIVE)
             if not found:
                 Domoticz.Debug("Device '"+Parameters["Address"]+"' not found!!!")

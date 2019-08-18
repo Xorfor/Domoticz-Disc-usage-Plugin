@@ -50,6 +50,8 @@ class BasePlugin:
         self.__runAgain = 0
         self.__COMMAND = ""
         self.__OPTIONS = ""
+        self.__factor = None
+        self.__options = None
 
     def onStart(self):
         Domoticz.Debug("onStart called")
@@ -65,10 +67,10 @@ class BasePlugin:
         Domoticz.Debug("Platform: "+self.__platform)
         if self.__platform == "Linux":
             self.__COMMAND = "df"
-            self.__OPTIONS = "--block-size=1K --output=target,avail,size"
+            self.__OPTIONS = "{} --block-size=1K --output=target,avail,size"
         elif self.__platform == "Windows":
             self.__COMMAND = "wmic"
-            self.__OPTIONS = "logicaldisk get caption, freespace, size"
+            self.__OPTIONS = "logicaldisk {} get caption, freespace, size"
         #
         # Create devices
         if len(Devices) == 0:
@@ -118,7 +120,8 @@ class BasePlugin:
         if self.__runAgain <= 0:
             found = False
             # Execute command
-            ret = os.popen(self.__COMMAND + " " + self.__OPTIONS).read()
+            ret = os.popen(self.__COMMAND + " " +
+                           self.__OPTIONS.format(Parameters["Address"])).read()
             for line in ret.splitlines():
                 Domoticz.Debug("Line: " + str(line))
                 data = line.split()
@@ -130,40 +133,51 @@ class BasePlugin:
                     Domoticz.Debug("Found " + Parameters["Address"])
                     freespace = int(data[1])
                     size = int(data[2])
-                    factor = 1
-                    options = {"Custom": "0;K"}
-                    if size > 10**5:
-                        factor = 2*10
-                        options = {"Custom": "0;M"}
-                    if size > 10**8:
-                        factor = 2**20
-                        options = {"Custom": "0;G"}
-
-                    UpdateDeviceOptions(self.__UNIT_FREE, options)
-                    UpdateDeviceOptions(self.__UNIT_SIZE, options)
-                    UpdateDeviceOptions(self.__UNIT_USED, options)
-
-                    used = size - freespace
+                    Domoticz.Debug("freespace: {}".format(freespace))
+                    Domoticz.Debug("size: {}".format(size))
+                    #
                     if size > 0:
+
+                        self.__factor = 1
+                        self.__options = {"Custom": "0;K"}
+                        if size > 10**5:
+                            self.__factor = 2**10
+                            self.__options = {"Custom": "0;M"}
+                        if size > 10**8:
+                            self.__factor = 2**20
+                            self.__options = {"Custom": "0;G"}
+                        if size > 10**11:
+                            self.__factor = 2**30
+                            self.__options = {"Custom": "0;T"}
+                        Domoticz.Debug("factor: {}".format(self.__factor))
+                        Domoticz.Debug("options: {}".format(self.__options))
+
                         usage = round((size - freespace) * 100 / size, 2)
                         UpdateDevice(self.__UNIT_USAGE,
                                      int(usage),
                                      str(usage),
                                      self.__ACTIVE
                                      )
+
+                        UpdateDeviceOptions(self.__UNIT_FREE, self.__options)
                         UpdateDevice(self.__UNIT_FREE,
-                                     int(freespace / factor),
-                                     str(round(freespace / factor)),
+                                     int(freespace / self.__factor),
+                                     str(round(freespace / self.__factor, 1)),
                                      self.__ACTIVE
                                      )
+
+                        UpdateDeviceOptions(self.__UNIT_SIZE, self.__options)
                         UpdateDevice(self.__UNIT_SIZE,
-                                     int(size / factor),
-                                     str(round(size / factor)),
+                                     int(size / self.__factor),
+                                     str(round(size / self.__factor, 1)),
                                      self.__ACTIVE
                                      )
+                        used = size - freespace
+
+                        UpdateDeviceOptions(self.__UNIT_USED, self.__options)
                         UpdateDevice(self.__UNIT_USED,
-                                     int(used / factor),
-                                     str(round(used / factor)),
+                                     int(used / self.__factor),
+                                     str(round(used / self.__factor, 1)),
                                      self.__ACTIVE
                                      )
             if not found:
